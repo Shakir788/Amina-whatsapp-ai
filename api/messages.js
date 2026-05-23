@@ -30,7 +30,7 @@ async function handler(
                 .find({})
 
                 .sort({
-                    createdAt: 1
+                    timestamp: 1
                 })
 
                 .toArray();
