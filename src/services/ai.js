@@ -50,6 +50,30 @@ const {
     detectEmotionalTriggers
 } = require("../brain/emotionMemoryEngine");
 
+const {
+    getSalesCloser
+} = require("../brain/salesCloserEngine");
+
+const {
+    getProductRecommendation
+} = require("../brain/productRecommendationEngine");
+
+const {
+    detectVIPCustomer
+} = require("../brain/vipEngine");
+
+const {
+    getReEngagementStyle
+} = require("../brain/reEngagementEngine");
+
+const {
+    getTypingStyle
+} = require("../brain/typingStyleEngine");
+
+const {
+    rankMemoryImportance
+} = require("../brain/conversationMemoryRanker");
+
 const genAI =
 new GoogleGenerativeAI(
     process.env.GEMINI_API_KEY
@@ -253,6 +277,56 @@ async function generateAIResponse(
         );
 
         // ========================================
+        // SALES CLOSER ENGINE
+        // ========================================
+
+        const salesCloser =
+        getSalesCloser(
+
+            intent,
+            mood,
+            relationshipStage
+        );
+
+        // ========================================
+        // PRODUCT RECOMMENDATION
+        // ========================================
+
+        const productRecommendation =
+        getProductRecommendation(
+
+            userMessage,
+            customerProfile
+        );
+
+        // ========================================
+        // VIP DETECTION
+        // ========================================
+
+        const isVIP =
+        detectVIPCustomer(
+            previousMessages
+        );
+
+        // ========================================
+        // RE-ENGAGEMENT STYLE
+        // ========================================
+
+        const reEngagementStyle =
+        getReEngagementStyle(
+            relationshipStage
+        );
+
+        // ========================================
+        // TYPING STYLE
+        // ========================================
+
+        const typingStyle =
+        getTypingStyle(
+            mood
+        );
+
+        // ========================================
         // SYSTEM PROMPT
         // ========================================
 
@@ -371,6 +445,18 @@ SALES STRATEGY
 ${salesStrategy}
 
 ========================================
+SALES CLOSER ENGINE
+========================================
+
+${salesCloser}
+
+========================================
+PRODUCT RECOMMENDATION ENGINE
+========================================
+
+${productRecommendation}
+
+========================================
 FOLLOW-UP STRATEGY
 ========================================
 
@@ -381,6 +467,24 @@ CONVERSATION FLOW
 ========================================
 
 ${conversationDirection}
+
+========================================
+RE-ENGAGEMENT STYLE
+========================================
+
+${reEngagementStyle}
+
+========================================
+TYPING STYLE
+========================================
+
+${typingStyle}
+
+========================================
+VIP CUSTOMER
+========================================
+
+${isVIP ? "This customer is VIP. Make them feel extremely special." : "Normal customer"}
 
 ========================================
 URGENCY
@@ -397,11 +501,6 @@ LUXURY POSITIONING
 - Use emotionally attractive wording.
 - Create subtle exclusivity.
 - Create soft urgency naturally.
-
-Examples:
-- "this one honestly feels sooo elegant 😌"
-- "one of our most loved pieces lately"
-- "this color is getting attention so fast 😭"
 
 ========================================
 CURRENT CUSTOMER MOOD
@@ -503,11 +602,16 @@ IMPORTANT RESPONSE RULES
 
         for (const memory of importantMemories) {
 
+            const score =
+            rankMemoryImportance(
+                memory
+            );
+
             await saveMemory(
 
                 userNumber,
 
-                `Important Memory: ${memory}`
+                `Important Memory (${score}): ${memory}`
             );
         }
 

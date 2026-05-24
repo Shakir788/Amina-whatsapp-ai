@@ -2,66 +2,118 @@ const {
     GoogleGenerativeAI
 } = require("@google/generative-ai");
 
+const {
+    buildImageReactionPrompt
+} = require("../brain/imagePersonalityEngine");
+
 const genAI =
-    new GoogleGenerativeAI(
-        process.env.GEMINI_API_KEY
-    );
+new GoogleGenerativeAI(
+    process.env.GEMINI_API_KEY
+);
 
 const model =
-    genAI.getGenerativeModel({
-        model: "gemini-2.5-flash"
-    });
+genAI.getGenerativeModel({
+
+    model: "gemini-2.5-flash"
+});
 
 async function analyzeFashionImage(
+
     imageBase64,
+
     mimeType
 ) {
 
     try {
 
-        const result =
-            await model.generateContent([
+        // ========================================
+        // STEP 1 — ANALYZE IMAGE
+        // ========================================
 
-                {
-                    inlineData: {
+        const analysisResult =
+        await model.generateContent([
 
-                        data: imageBase64,
-                        mimeType
-                    }
-                },
+            {
+                inlineData: {
 
-                `
-Analyze this fashion image.
+                    data: imageBase64,
 
-Rules:
-- Detect clothing type
-- Detect color
-- Detect fashion vibe
-- Suggest similar elegant women outfits
-- Reply short
-- Feminine tone
-- Human-like style
-- French/Darija friendly
+                    mimeType
+                }
+            },
+
+            `
+Analyze this women's fashion image.
+
+Detect:
+- outfit type
+- colors
+- luxury vibe
+- elegance
+- feminine styling
+- fashion energy
+
+Keep analysis SHORT.
 `
-            ]);
+        ]);
 
-        return result.response.text();
+        const analysis =
+
+        analysisResult.response.text();
+
+        // ========================================
+        // STEP 2 — HUMANIZE RESPONSE
+        // ========================================
+
+        const humanPrompt =
+
+        buildImageReactionPrompt(
+            analysis
+        );
+
+        const finalResult =
+        await model.generateContent(
+            humanPrompt
+        );
+
+        let finalReply =
+
+        finalResult.response.text();
+
+        // ========================================
+        // CLEAN RESPONSE
+        // ========================================
+
+        finalReply =
+
+        finalReply
+
+        .replace(/\*/g, "")
+
+        .replace(/Amina:/gi, "")
+
+        .trim();
+
+        return finalReply;
 
     } catch (error) {
 
         console.log(
-            '❌ IMAGE AI ERROR'
+            "❌ IMAGE AI ERROR"
         );
 
         console.log(error);
 
         return `
-Sorry love 💔
-I couldn't analyze the image.
+Hmm 😔
+
+I couldn't fully analyze the look love,
+but it definitely feels elegant ✨
 `;
     }
 }
 
 module.exports = {
+
     analyzeFashionImage
 };
