@@ -91,8 +91,8 @@ genAI.getGenerativeModel({
 
 function detectIntent(message) {
 
-    const text =
-    message.toLowerCase();
+   const text =
+(message || "").toLowerCase();
 
     // PRICING
 
@@ -164,7 +164,7 @@ async function generateAIResponse(
         // ========================================
 
         const previousMessages =
-        await getMemory(userNumber);
+        (await getMemory(userNumber)) || [];
 
         // LAST 12 MESSAGES
 
