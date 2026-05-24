@@ -2,6 +2,12 @@ const {
     connectDB
 } = require("../src/utils/chatLogger");
 
+const generateAIResponse =
+    require("../src/services/ai");
+
+const sendWhatsAppMessage =
+    require("../src/services/whatsapp");
+
 module.exports = async function handler(
     req,
     res
@@ -12,28 +18,19 @@ module.exports = async function handler(
     // =========================
 
     res.setHeader(
-        "Access-Control-Allow-Credentials",
-        true
-    );
-
-    res.setHeader(
         "Access-Control-Allow-Origin",
         "*"
     );
 
     res.setHeader(
         "Access-Control-Allow-Methods",
-        "GET,OPTIONS,POST"
+        "GET, POST, OPTIONS"
     );
 
     res.setHeader(
         "Access-Control-Allow-Headers",
         "*"
     );
-
-    // =========================
-    // OPTIONS
-    // =========================
 
     if (req.method === "OPTIONS") {
 
@@ -62,13 +59,21 @@ module.exports = async function handler(
 
         } = req.body;
 
+        // =========================
+        // DB
+        // =========================
+
         const db =
             await connectDB();
 
         const collection =
             db.collection("messages");
 
-        const newMessage = {
+        // =========================
+        // SAVE ADMIN MESSAGE
+        // =========================
+
+        const adminMessage = {
 
             userId,
 
@@ -80,17 +85,69 @@ module.exports = async function handler(
         };
 
         await collection.insertOne(
-            newMessage
+            adminMessage
+        );
+
+        // =========================
+        // SEND TO WHATSAPP
+        // =========================
+
+        await sendWhatsAppMessage(
+
+            userId,
+
+            message
+        );
+
+        // =========================
+        // GENERATE AI REPLY
+        // =========================
+
+        const aiReply =
+            await generateAIResponse(
+                message
+            );
+
+        // =========================
+        // SAVE AI REPLY
+        // =========================
+
+        const aiMessage = {
+
+            userId,
+
+            message: aiReply,
+
+            sender: "ai",
+
+            timestamp: new Date()
+        };
+
+        await collection.insertOne(
+            aiMessage
+        );
+
+        // =========================
+        // SEND AI MESSAGE
+        // =========================
+
+        await sendWhatsAppMessage(
+
+            userId,
+
+            aiReply
         );
 
         return res.status(200).json({
 
-            success: true,
-
-            data: newMessage
+            success: true
         });
 
     } catch (error) {
+
+        console.log(
+            "❌ SEND MESSAGE ERROR"
+        );
 
         console.log(error);
 
