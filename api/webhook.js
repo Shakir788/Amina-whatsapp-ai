@@ -61,7 +61,8 @@ module.exports = async function handler(req, res) {
                     // USER INFO
                     // =========================
                     const from = message.from;
-                    const businessNumber = body.entry?.[0]?.changes?.[0]?.value?.metadata?.display_phone_number?.replace(/\D/g, '');
+                    const businessNumber =
+                    body.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
 
                     // =========================
                     // STOP SELF REPLY LOOP
@@ -160,14 +161,37 @@ module.exports = async function handler(req, res) {
 
                         await new Promise(resolve => setTimeout(resolve, typingDelay));
 
-                        await sendWhatsAppMessage(from, aiReply);
+                       if (!aiReply || aiReply.trim() === '') {
+
+                                                aiReply =
+                                                "hmm 😌 tell me more";
+                                            }
                         return res.status(200).end();
                     }
 
                     // =========================
                     // IGNORE NON-TEXT EVENTS
                     // =========================
-                    if (message.type !== 'text') {
+                    const supportedTypes = [
+
+    'text',
+
+    'image',
+
+    'audio'
+];
+
+if (
+    !supportedTypes.includes(
+        message.type
+    )
+) {
+
+    console.log(
+        `⚠️ Unsupported type: ${message.type}`
+    );
+
+    return res.status(200).end();
                         console.log('⚠️ Non-text event ignored');
                         return res.status(200).end();
                     }

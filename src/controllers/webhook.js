@@ -1,11 +1,21 @@
 const express = require('express');
+
 const router = express.Router();
 
-const {generateAIResponse} = require('../services/ai');
-const sendWhatsAppMessage = require('../services/whatsapp');
+const {
+    generateAIResponse
+} = require('../services/ai');
 
-console.log('✅ WEBHOOK FILE LOADED');
+const {
+    analyzeFashionImage
+} = require('../services/imageAI');
 
+const sendWhatsAppMessage =
+require('../services/whatsapp');
+
+console.log(
+    '✅ WEBHOOK FILE LOADED'
+);
 
 // ========================================
 // WEBHOOK VERIFICATION
@@ -13,119 +23,230 @@ console.log('✅ WEBHOOK FILE LOADED');
 
 router.get('/', (req, res) => {
 
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
+    const mode =
+    req.query['hub.mode'];
+
+    const token =
+    req.query['hub.verify_token'];
+
+    const challenge =
+    req.query['hub.challenge'];
 
     if (mode && token) {
 
         if (
+
             mode === 'subscribe' &&
+
             token === process.env.VERIFY_TOKEN
+
         ) {
 
-            console.log('✅ Meta Webhook Verified Successfully!');
+            console.log(
+                '✅ Meta Webhook Verified'
+            );
 
-            return res.status(200).send(challenge);
+            return res
+            .status(200)
+            .send(challenge);
 
         } else {
 
-            console.log('❌ Verification failed');
+            console.log(
+                '❌ Verification Failed'
+            );
 
             return res.sendStatus(403);
         }
     }
 
-    return res.send('Webhook endpoint working 🚀');
+    return res.send(
+        'Webhook running 😈'
+    );
 });
 
-
 // ========================================
-// RECEIVE WHATSAPP MESSAGES
+// RECEIVE WHATSAPP EVENTS
 // ========================================
 
 router.post('/', async (req, res) => {
 
     try {
 
-        console.log('🔥 MESSAGE RECEIVED FROM WHATSAPP');
+        console.log(
+            '🔥 WEBHOOK EVENT RECEIVED'
+        );
 
         const body = req.body;
 
         // ========================================
-        // CHECK MESSAGE EXISTS
+        // SAFETY CHECK
         // ========================================
 
         if (
-            body.object &&
-            body.entry &&
-            body.entry[0].changes &&
-            body.entry[0].changes[0].value.messages &&
-            body.entry[0].changes[0].value.messages[0]
+            !body.object ||
+            !body.entry ||
+            !body.entry[0]?.changes ||
+            !body.entry[0]?.changes[0]?.value
         ) {
 
-            const message =
-                body.entry[0].changes[0].value.messages[0];
-
-            const from =
-                message.from;
-
-            const userMessage =
-                message.text?.body || '';
-
-            // ========================================
-            // IGNORE STATUS EVENTS
-            // ========================================
-
-            if (!userMessage) {
-
-                return res.sendStatus(200);
-            }
-
-            // ========================================
-            // IGNORE OWN MESSAGES
-            // ========================================
-
-            const businessPhoneNumberId =
-                body.entry[0].changes[0].value.metadata.phone_number_id;
-
-            if (
-                message.from === businessPhoneNumberId
-            ) {
-
-                console.log('⚠️ Ignoring own message');
-
-                return res.sendStatus(200);
-            }
-
-            console.log(`📩 User: ${userMessage}`);
-
-            // ========================================
-            // GENERATE AI RESPONSE
-            // ========================================
-
-            const aiReply =
-                            await generateAIResponse( userMessage, from);
-
-            console.log(`🤖 AI: ${aiReply}`);
-
-            // ========================================
-            // SEND WHATSAPP REPLY
-            // ========================================
-
-            await sendWhatsAppMessage(
-                from,
-                aiReply
+            console.log(
+                '⚠️ Invalid webhook structure'
             );
 
-            console.log('✅ Reply Sent Successfully');
+            return res.sendStatus(200);
         }
+
+        const value =
+
+        body.entry[0]
+        .changes[0]
+        .value;
+
+        // ========================================
+        // IGNORE STATUS EVENTS
+        // ========================================
+
+        if (!value.messages) {
+
+            console.log(
+                '⚠️ Status update ignored'
+            );
+
+            return res.sendStatus(200);
+        }
+
+        const message =
+        value.messages[0];
+
+        if (!message) {
+
+            return res.sendStatus(200);
+        }
+
+        const from =
+        message.from;
+
+        // ========================================
+        // IGNORE OWN MESSAGES
+        // ========================================
+
+        const businessPhoneNumberId =
+
+        value.metadata
+        ?.phone_number_id;
+
+        if (
+            from ===
+            businessPhoneNumberId
+        ) {
+
+            console.log(
+                '⚠️ Ignoring own message'
+            );
+
+            return res.sendStatus(200);
+        }
+
+        console.log(
+            `📩 Message from ${from}`
+        );
+
+        let aiReply = '';
+
+        // ========================================
+        // TEXT MESSAGE
+        // ========================================
+
+        if (
+            message.type === 'text'
+        ) {
+
+            const userMessage =
+            message.text?.body || '';
+
+            console.log(
+                `💬 TEXT: ${userMessage}`
+            );
+
+            aiReply =
+            await generateAIResponse(
+
+                userMessage,
+
+                from
+            );
+        }
+
+        // ========================================
+        // IMAGE MESSAGE
+        // ========================================
+
+        else if (
+            message.type === 'image'
+        ) {
+
+            console.log(
+                '🖼️ IMAGE RECEIVED'
+            );
+
+            aiReply =
+
+            "oh wow 😍 this look feels sooo elegant honestly ✨";
+        }
+
+        // ========================================
+        // UNSUPPORTED
+        // ========================================
+
+        else {
+
+            console.log(
+                `⚠️ Unsupported type: ${message.type}`
+            );
+
+            return res.sendStatus(200);
+        }
+
+        // ========================================
+        // EMPTY REPLY SAFETY
+        // ========================================
+
+        if (
+            !aiReply ||
+            aiReply.trim() === ''
+        ) {
+
+            aiReply =
+            "hmm 😭✨ tell me more love";
+        }
+
+        console.log(
+            `🤖 AI: ${aiReply}`
+        );
+
+        // ========================================
+        // SEND REPLY
+        // ========================================
+
+        await sendWhatsAppMessage(
+
+            from,
+
+            aiReply
+        );
+
+        console.log(
+            '✅ Reply Sent'
+        );
 
         return res.sendStatus(200);
 
     } catch (error) {
 
-        console.log('❌ WEBHOOK ERROR');
+        console.log(
+            '❌ WEBHOOK ERROR'
+        );
 
         console.log(error);
 

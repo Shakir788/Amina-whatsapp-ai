@@ -10,9 +10,9 @@ async function handler(
     res
 ) {
 
-    // =========================
-    // CORS FIX
-    // =========================
+    // ========================================
+    // CORS
+    // ========================================
 
     res.setHeader(
         'Access-Control-Allow-Origin',
@@ -21,7 +21,7 @@ async function handler(
 
     res.setHeader(
         'Access-Control-Allow-Methods',
-        'GET,OPTIONS'
+        'GET, OPTIONS'
     );
 
     res.setHeader(
@@ -29,37 +29,107 @@ async function handler(
         'Content-Type'
     );
 
-    if (req.method === 'OPTIONS') {
+    // ========================================
+    // OPTIONS
+    // ========================================
 
-        return res.status(200).end();
+    if (
+        req.method === 'OPTIONS'
+    ) {
+
+        return res
+        .status(200)
+        .end();
+    }
+
+    // ========================================
+    // METHOD CHECK
+    // ========================================
+
+    if (
+        req.method !== 'GET'
+    ) {
+
+        return res
+        .status(405)
+        .json({
+
+            success: false,
+
+            error:
+            'Method not allowed'
+        });
     }
 
     try {
 
+        console.log(
+            '📥 Fetching messages'
+        );
+
         const db =
-            await connectDB();
+        await connectDB();
 
         const collection =
-            db.collection(
-                'messages'
-            );
+        db.collection(
+            'messages'
+        );
+
+        // ========================================
+        // FETCH MESSAGES
+        // ========================================
 
         const messages =
-            await collection
 
-                .find({})
+        await collection
 
-                .sort({
-                    timestamp: 1
-                })
+        .find({})
 
-                .toArray();
+        .sort({
 
-        return res.status(200).json({
+            timestamp: 1
+        })
+
+        .limit(1000)
+
+        .toArray();
+
+        // ========================================
+        // SAFE CLEAN
+        // ========================================
+
+        const cleanedMessages =
+
+        messages.map((msg) => ({
+
+            ...msg,
+
+            timestamp:
+
+                msg.timestamp ||
+
+                new Date()
+        }));
+
+        console.log(
+            `✅ ${cleanedMessages.length} messages loaded`
+        );
+
+        // ========================================
+        // RESPONSE
+        // ========================================
+
+        return res
+        .status(200)
+        .json({
 
             success: true,
 
-            messages
+            count:
+            cleanedMessages.length,
+
+            messages:
+            cleanedMessages
         });
 
     } catch (error) {
@@ -70,9 +140,14 @@ async function handler(
 
         console.log(error);
 
-        return res.status(500).json({
+        return res
+        .status(500)
+        .json({
 
-            success: false
+            success: false,
+
+            error:
+            'Failed to fetch messages'
         });
     }
 };
