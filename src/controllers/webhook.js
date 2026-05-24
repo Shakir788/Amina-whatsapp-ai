@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const generateAIResponse = require('../services/ai');
+const {generateAIResponse} = require('../services/ai');
 const sendWhatsAppMessage = require('../services/whatsapp');
 
 console.log('✅ WEBHOOK FILE LOADED');
@@ -105,7 +105,7 @@ router.post('/', async (req, res) => {
             // ========================================
 
             const aiReply =
-                await generateAIResponse(userMessage);
+                            await generateAIResponse( userMessage, from);
 
             console.log(`🤖 AI: ${aiReply}`);
 
