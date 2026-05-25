@@ -3,30 +3,38 @@ const {
 } = require("@google/generative-ai");
 
 const genAI =
-    new GoogleGenerativeAI(
-        process.env.GEMINI_API_KEY
-    );
+new GoogleGenerativeAI(
+    process.env.GEMINI_API_KEY
+);
 
 const model =
-    genAI.getGenerativeModel({
-        model: "gemini-2.5-flash"
-    });
+genAI.getGenerativeModel({
+
+    model: "gemini-2.5-flash"
+});
 
 async function transcribeAudio(
+
     audioBase64,
+
     mimeType
 ) {
 
     try {
 
-        // WhatsApp sends:
-        // audio/ogg; codecs=opus
+        console.log(
+            `🎤 MIME TYPE: ${mimeType}`
+        );
 
-        const cleanMimeType =
-            mimeType.split(';')[0];
+        // ========================================
+        // GEMINI AUDIO TRANSCRIPTION
+        // ========================================
 
         const result =
-            await model.generateContent([
+
+        await Promise.race([
+
+            model.generateContent([
 
                 {
                     inlineData: {
@@ -34,7 +42,7 @@ async function transcribeAudio(
                         data: audioBase64,
 
                         mimeType:
-                            cleanMimeType
+                        mimeType
                     }
                 },
 
@@ -45,22 +53,83 @@ The user may speak:
 - Moroccan Darija
 - French
 - English
+- Arabic
 - Mixed languages
 
 Your task:
+
 - Transcribe EXACTLY what is spoken
 - Keep original language
 - No translation
 - No explanations
-- No extra formatting
-- If audio is empty/noise return only: ...
-`
-            ]);
+- No formatting
+- No summaries
+- No extra text
 
-        return result
-            .response
-            .text()
-            ?.trim() || null;
+IMPORTANT:
+
+If audio is:
+- empty
+- unclear
+- noise only
+
+return ONLY:
+...
+
+`
+            ]),
+
+            // ========================================
+            // TIMEOUT PROTECTION
+            // ========================================
+
+            new Promise((_, reject) =>
+
+                setTimeout(() =>
+
+                    reject(
+                        new Error(
+                            'Gemini timeout'
+                        )
+                    ),
+
+                    15000
+                )
+            )
+        ]);
+
+        // ========================================
+        // EXTRACT TEXT
+        // ========================================
+
+        const text =
+
+        result.response
+        .text()
+        ?.trim();
+
+        console.log(
+            `🗣️ TRANSCRIBED: ${text}`
+        );
+
+        // ========================================
+        // EMPTY SAFETY
+        // ========================================
+
+        if (
+            !text ||
+            text === '' ||
+            text === '...'
+        ) {
+
+            console.log(
+                '⚠️ Empty transcription'
+            );
+
+            return null;
+        }
+
+        return text;
 
     } catch (error) {
 
@@ -75,5 +144,6 @@ Your task:
 }
 
 module.exports = {
+
     transcribeAudio
 };
